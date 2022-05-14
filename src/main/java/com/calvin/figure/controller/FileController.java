@@ -14,6 +14,7 @@ import com.calvin.figure.entity.File;
 import com.calvin.figure.entity.QFile;
 import com.calvin.figure.entity.User;
 import com.calvin.figure.repository.FileRepository;
+import com.calvin.figure.service.FileService;
 import com.calvin.figure.service.UserService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -48,6 +49,8 @@ public class FileController {
 
 	@Autowired
 	private FileRepository fileRepository;
+	@Autowired
+	private FileService fileService;
 	@Autowired
 	private UserService userService;
 	@Autowired
@@ -116,20 +119,10 @@ public class FileController {
 		userService.check("file", "id", 0b10, auth);
 		userService.check("file", "url", 0b10, auth);
 		userService.check("file", "contentType", 0b10, auth);
-		List<File> values = new ArrayList<>();
-		for (int i = 0; i < file.length; i++) {
-			File value1 = new File();
-			if (value != null) {
-				value1.setName(value.getName());
-				value1.setRemark(value.getRemark());
-			}
-			calUtility.saveFile(file[i], value1);
-			values.add(value1);
-		}
 		Set<String> perms = calUtility.getFields(auth, 0b10, "file");
 		CalUtility.copyFields(value, perms);
 		Map<String, Object> body = new HashMap<>();
-		body.put("data", fileRepository.saveAll(values));
+		body.put("data", fileService.add(file, value));
 		return ResponseEntity.ok(body);
 	}
 
@@ -195,13 +188,7 @@ public class FileController {
 		// 验证权限"file:*:w" *表示要全部满足
 		userService.checkAll("file", 0b10, auth);
 		// delete@creator.id=$me
-		File file = fileRepository.findById(id).get();
-		// if (!file.getCreator().getId().equals(me.getId())) {
-		// 	throw new HttpClientErrorException(HttpStatus.FORBIDDEN, "只能删除自己上传的");
-		// }
-		String url = file.getUrl();
-		fileRepository.deleteById(id);
-		calUtility.delFile(url);
+		fileService.delete(id);
 		return ResponseEntity.noContent().build();
 	}
 }

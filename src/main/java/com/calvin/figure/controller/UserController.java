@@ -2,6 +2,7 @@ package com.calvin.figure.controller;
 
 import java.net.URI;
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 
 import com.calvin.figure.CalUtility;
 import com.calvin.figure.entity.QUser;
@@ -23,9 +25,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
+import org.aspectj.weaver.ast.Instanceof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authorization.AuthorityAuthorizationManager;
@@ -63,19 +68,20 @@ public class UserController {
     @Autowired
     private CalUtility calUtility;
 
-    private static final SecureRandom random = new SecureRandom();
+    private static final SecureRandom RANDOM = new SecureRandom();
 
-    private static final char[] alphabet = "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    private static final char[] ALPHABET = "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
             .toCharArray();
 
-    private static String randomUsername() {
-        final int size = 14;
+    private static final char[] NUMBER = "0123456789".toCharArray();
+
+    private static String random(char[] alphabet, int size) {
         final int mask = (2 << (int) Math.floor(Math.log(alphabet.length - 1) / Math.log(2))) - 1;
         final int step = (int) Math.ceil(1.6 * mask * size / alphabet.length);
         final StringBuilder idBuilder = new StringBuilder();
         while (true) {
             final byte[] bytes = new byte[step];
-            random.nextBytes(bytes);
+            RANDOM.nextBytes(bytes);
             for (int i = 0; i < step; i++) {
                 final int alphabetIndex = bytes[i] & mask;
                 if (alphabetIndex < alphabet.length) {
@@ -161,6 +167,7 @@ public class UserController {
         value.setPassword(passwordEncoder.encode(value.getPassword()));
         Set<String> perms = calUtility.getFields(auth, 0b10, "user");
         CalUtility.copyFields(value, perms);
+        value.setVersion(0);
         User value1 = userRepository.save(value);
         value1.setPassword(null);
         Map<String, Object> body = new HashMap<>();
@@ -235,9 +242,22 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("exist")
+    public ResponseEntity<Map<String, Object>> exist(User value, String matchMode) {
+        Example<User> example;
+        if ("any".equals(matchMode)) {
+            ExampleMatcher matcher = ExampleMatcher.matchingAny();
+            example = Example.of(value, matcher);
+        } else
+            example = Example.of(value);
+        boolean isExist = userRepository.exists(example);
+        Map<String, Object> body = new HashMap<>();
+        body.put("data", isExist);
+        return ResponseEntity.ok(body);
+    }
+
     @PostMapping("login")
-    public ResponseEntity<Map<String, Object>> login(HttpServletRequest request, @RequestParam String username,
-            @RequestParam String password, @RequestParam String version,
+    public ResponseEntity<Map<String, Object>> login(HttpServletRequest request, @RequestParam String version,
             @RequestParam(required = false) boolean error) {
         if (error) {
             var e = (AuthenticationException) request.getAttribute(WebAttributes.AUTHENTICATION_EXCEPTION);
@@ -249,7 +269,7 @@ public class UserController {
             user1.setUsername(user.getUsername());
             user1.setName(user.getName());
             user1.setPerms(user.getPerms());
-            userService.sendLoginMail(username, calUtility.getClientIp(request));
+            userService.sendLoginMail(user.getUsername(), calUtility.getClientIp(request));
             Map<String, Object> body = new HashMap<>();
             body.put("data", user1);
             return ResponseEntity.ok(body);
@@ -267,14 +287,36 @@ public class UserController {
     }
 
     @PostMapping("register")
-    public ResponseEntity<Map<String, Object>> register(@RequestBody User value) {
-        if (value.getEmail() == null || value.getEmail().isEmpty())
-            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【邮箱】字段必传");
-        if (value.getPassword() == null || value.getPassword().isEmpty())
-            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【密码】字段必传");
-        User user = new User(randomUsername());
-        user.setEmail(value.getEmail());
-        user.setPassword(passwordEncoder.encode(value.getPassword()));
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> register(String email, String password, String code,
+            HttpSession session) {
+        if (email == null || email.isEmpty())
+            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【邮箱】必传");
+        if (password == null || password.isEmpty())
+            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【密码】必传");
+        if (code == null || code.isEmpty())
+            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【验证码】必传");
+        User user1 = new User();
+        user1.setEmail(email);
+        Example<User> example = Example.of(user1);
+        boolean isExist = userRepository.exists(example);
+        if (isExist)
+            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "邮箱已注册");
+        Map<String, Object> emailCode = (Map<String, Object>) session.getAttribute("emailRegister");
+        if (emailCode == null)
+            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "未申请验证码");
+        String email1 = (String) emailCode.get("email");
+        if (!email.equals(email1))
+            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "接收验证码的邮箱与注册邮箱不一致");
+        String code1 = (String) emailCode.get("code");
+        if (!code.equals(code1))
+            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "验证码不正确");
+        Instant expiry = (Instant) emailCode.get("expiry");
+        if (Instant.now().isAfter(expiry))
+            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "验证码已过期");
+        User user = new User(random(ALPHABET, 14));
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(password));
         userRepository.save(user);
         return ResponseEntity.noContent().build();
     }
@@ -325,7 +367,7 @@ public class UserController {
         value.setExpiryTime(null);
         value.setCredentialsExpiryTime(null);
         value.setLocked(null);
-        value.setEnabled(null);
+        value.setDisabled(null);
 
         User me = (User) auth.getPrincipal();
         Optional<User> opt = userRepository.findById(me.getId());
@@ -351,4 +393,39 @@ public class UserController {
         return ResponseEntity.created(URI.create("/users/me")).body(body);
     }
 
+    @PostMapping("emailLoginCode")
+    public ResponseEntity<Map<String, Object>> emailLoginCode(HttpSession session, @RequestParam String email) {
+        User user = new User();
+        user.setEmail(email);
+        Example<User> example = Example.of(user);
+        boolean isExist = userRepository.exists(example);
+        if (!isExist)
+            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "邮箱不存在");
+        String code = random(NUMBER, 6);
+        Map<String, Object> map = new HashMap<>();
+        map.put("email", email);
+        map.put("code", code);
+        map.put("expiry", Instant.now().plusSeconds(300));
+        session.setAttribute("emailLogin", map);
+        userService.sendLoginCodeMail(email, code);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("emailRegisterCode")
+    public ResponseEntity<Map<String, Object>> emailRegisterCode(HttpSession session, @RequestParam String email) {
+        User user = new User();
+        user.setEmail(email);
+        Example<User> example = Example.of(user);
+        boolean isExist = userRepository.exists(example);
+        if (isExist)
+            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "邮箱已注册");
+        String code = random(NUMBER, 6);
+        Map<String, Object> map = new HashMap<>();
+        map.put("email", email);
+        map.put("code", code);
+        map.put("expiry", Instant.now().plusSeconds(300));
+        session.setAttribute("emailRegister", map);
+        userService.sendRegisterCodeMail(email, code);
+        return ResponseEntity.noContent().build();
+    }
 }

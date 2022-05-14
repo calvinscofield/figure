@@ -151,7 +151,7 @@ public class InitServiceImpl implements InitService {
             metaFields.add(new MetaField("expiryTime", metaTable, "过期时间"));
             metaFields.add(new MetaField("locked", metaTable, "锁定"));
             metaFields.add(new MetaField("credentialsExpiryTime", metaTable, "凭证过期时间"));
-            metaFields.add(new MetaField("enabled", metaTable, "启用"));
+            metaFields.add(new MetaField("disabled", metaTable, "禁用"));
             metaFields.add(new MetaField("remark", metaTable, "备注"));
             metaFields.add(new MetaField("role", metaTable, "角色"));
             metaFields.add(new MetaField("creator", metaTable, "创建者"));

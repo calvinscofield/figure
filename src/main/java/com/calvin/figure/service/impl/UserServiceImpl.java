@@ -307,6 +307,54 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         logger.debug("MultiThreadProcessService-sendMail" + Thread.currentThread() + "......end");
     }
 
+    @Async
+    @Override
+    public void sendLoginCodeMail(String email, String code) {
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message);
+            helper.setFrom("johnmore@163.com");
+            helper.setTo(email);
+            helper.setSubject("验证码");
+            helper.setText(
+                    String.format("【Figure账号】验证码：%s。您正在使用邮箱验证码登录功能，验证码5分钟内有效，提供给他人可能导致账号被盗。如非本人操作请忽略此邮件。", code));
+            javaMailSender.send(message);
+        } catch (MessagingException | MailException e) {
+            logger.error("发送邮件失败", e);
+        }
+    }
+
+    @Async
+    @Override
+    public void sendRegisterCodeMail(String email, String code) {
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message);
+            helper.setFrom("johnmore@163.com");
+            helper.setTo(email);
+            helper.setSubject("验证码");
+            helper.setText(
+                    String.format("【Figure账号】验证码：%s。您正在使用邮箱验证码注册功能，验证码5分钟内有效，请勿提供给他人。如非本人操作请忽略此邮件。", code));
+            javaMailSender.send(message);
+        } catch (MessagingException | MailException e) {
+            logger.error("发送邮件失败", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public boolean isAdministrator(Integer id) {
+        User user = userRepository.findById(id).get();
+        return isAdministrator(user);
+    }
+
+    @Override
+    public boolean isAdministrator(User user) {
+        List<MetaSystem> metaSystems = metaSystemRepository.findAll(PageRequest.of(0, 1)).getContent();
+        // 超级管理员
+        return metaSystems.size() > 0 && user.getUsername().equals(metaSystems.get(0).getAdministrator());
+    }
+
     @Override
     @Transactional
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -325,16 +373,18 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     @Transactional
-    public boolean isAdministrator(Integer id) {
-        User user = userRepository.findById(id).get();
-        return isAdministrator(user);
-    }
-
-    @Override
-    public boolean isAdministrator(User user) {
-        List<MetaSystem> metaSystems = metaSystemRepository.findAll(PageRequest.of(0, 1)).getContent();
-        // 超级管理员
-        return metaSystems.size() > 0 && user.getUsername().equals(metaSystems.get(0).getAdministrator());
+    public UserDetails loadUserByEmail(String email) throws UsernameNotFoundException {
+        User user;
+        try {
+            user = userRepository.findByEmail(email).get();
+            Collection<GrantedAuthority> authorities = new ArrayList<>();
+            generateAuthorities(authorities, user);
+            user.setAuthorities(authorities);
+            user.setPerms(generatePerms(user));
+        } catch (NoSuchElementException e) {
+            throw new UsernameNotFoundException("用户不存在");
+        }
+        return user;
     }
 
 }

@@ -76,7 +76,7 @@ public class User implements UserDetails, CredentialsContainer {
     private Boolean locked;
 
     @Column
-    private Boolean enabled;
+    private Boolean disabled;
 
     @Column
     private String remark;
@@ -108,7 +108,7 @@ public class User implements UserDetails, CredentialsContainer {
 
     @JsonIgnore
     @Version
-    private Integer version = 0;
+    private Integer version;
 
     @Transient
     @JsonIgnore
@@ -120,14 +120,14 @@ public class User implements UserDetails, CredentialsContainer {
     public User() {
     }
 
-    public User(String username, Boolean locked, Boolean enabled) {
+    public User(String username, Boolean locked, Boolean disabled) {
         this.username = username;
         this.locked = locked;
-        this.enabled = enabled;
+        this.disabled = disabled;
     }
 
     public User(String username) {
-        this(username, false, true);
+        this(username, false, false);
     }
 
     public Integer getId() {
@@ -204,12 +204,12 @@ public class User implements UserDetails, CredentialsContainer {
         this.locked = locked;
     }
 
-    public Boolean getEnabled() {
-        return enabled;
+    public Boolean getDisabled() {
+        return disabled;
     }
 
-    public void setEnabled(Boolean enabled) {
-        this.enabled = enabled;
+    public void setDisabled(Boolean disabled) {
+        this.disabled = disabled;
     }
 
     public String getRemark() {
@@ -344,7 +344,7 @@ public class User implements UserDetails, CredentialsContainer {
 
     @Override
     public boolean isEnabled() {
-        return this.enabled == null ? false : this.enabled;
+        return this.disabled == null ? true : !this.disabled;
     }
 
     @Override

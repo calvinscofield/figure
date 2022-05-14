@@ -71,7 +71,8 @@ public class FigureApplication {
 			public void addInterceptors(InterceptorRegistry registry) {
 				registry.addInterceptor(calInterceptor())
 						.addPathPatterns("/**")
-						.excludePathPatterns("/users/login", "/users/logout", "/error", "/users/register");
+						.excludePathPatterns("/users/login", "/users/logout", "/error", "/users/register",
+								"/users/emailLoginCode", "/users/emailRegisterCode", "/users/exist");
 			}
 		};
 	}

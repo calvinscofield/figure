@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 public interface UserService {
 
@@ -28,7 +30,13 @@ public interface UserService {
 
     void sendLoginMail(String username, String ip);
 
+    void sendLoginCodeMail(String email, String code);
+
+    void sendRegisterCodeMail(String email, String code);
+
     boolean isAdministrator(User user);
 
     boolean isAdministrator(Integer id);
+
+    UserDetails loadUserByEmail(String email) throws UsernameNotFoundException;
 }
