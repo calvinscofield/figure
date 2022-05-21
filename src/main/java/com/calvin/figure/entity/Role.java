@@ -79,7 +79,7 @@ public class Role implements Serializable {
 
     @JsonIgnore
     @Version
-    private Integer version = 0;
+    private Integer version;
 
     public Integer getId() {
         return id;

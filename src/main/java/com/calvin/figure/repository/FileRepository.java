@@ -8,6 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface FileRepository extends JpaRepository<File, Integer> {
 
-	Optional<File> findByUrl(String url);
+	Optional<File> findByFilename(String filename);
 
 }

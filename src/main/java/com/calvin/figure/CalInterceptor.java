@@ -45,19 +45,19 @@ public class CalInterceptor implements HandlerInterceptor {
             var auth = SecurityContextHolder.getContext().getAuthentication();
             if (AuthorityAuthorizationManager.hasRole("ANONYMOUS").check(() -> auth, null).isGranted())
                 throw new HttpClientErrorException(HttpStatus.UNAUTHORIZED, "需要登录");
-            User user = (User) auth.getPrincipal();
+            User me = (User) auth.getPrincipal();
             // 每次都从数据库里获取用户最新的权限数据更新到Token里，这样就可以实现动态权限
             Collection<GrantedAuthority> authorities = new ArrayList<>();
-            User user1 = userService.generateAuthorities(authorities, user.getId());
-            if (!user1.isAccountNonLocked())
+            User user = userService.generateAuthorities(authorities, me.getId());
+            if (!user.isAccountNonLocked())
                 throw new LockedException("用户帐号已被锁定");
-            if (!user1.isEnabled())
+            if (!user.isEnabled())
                 throw new DisabledException("用户已失效");
-            if (!user1.isAccountNonExpired())
+            if (!user.isAccountNonExpired())
                 throw new AccountExpiredException("用户帐号已过期");
-            if (!user1.isCredentialsNonExpired())
+            if (!user.isCredentialsNonExpired())
                 throw new CredentialsExpiredException("用户凭证已过期");
-            user.setRole(user1.getRole());
+            me.setRole(user.getRole());
             var field = AbstractAuthenticationToken.class.getDeclaredField("authorities");
             field.setAccessible(true);
             field.set(auth, authorities);

@@ -1,5 +1,6 @@
 package com.calvin.figure.service.impl;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,15 +11,18 @@ import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import javax.transaction.Transactional;
 
+import com.calvin.figure.entity.File;
 import com.calvin.figure.entity.MetaField;
 import com.calvin.figure.entity.MetaSystem;
 import com.calvin.figure.entity.MetaTable;
 import com.calvin.figure.entity.QUser;
 import com.calvin.figure.entity.User;
+import com.calvin.figure.repository.FileRepository;
 import com.calvin.figure.repository.MetaFieldRepository;
 import com.calvin.figure.repository.MetaSystemRepository;
 import com.calvin.figure.repository.MetaTableRepository;
 import com.calvin.figure.repository.UserRepository;
+import com.calvin.figure.service.FileService;
 import com.calvin.figure.service.UserService;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -44,6 +48,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class UserServiceImpl implements UserService, UserDetailsService {
@@ -56,6 +61,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private MetaFieldRepository metaFieldRepository;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private FileService fileService;
     @Autowired
     private MetaSystemRepository metaSystemRepository;
     @Autowired
@@ -387,4 +394,25 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         return user;
     }
 
+    @Override
+    @Transactional
+    public User add(MultipartFile avatar, User value) throws IOException {
+        if (avatar != null) {
+            File file = new File();
+            var file1 = fileService.add(avatar, file);
+            value.setAvatar(file1);
+        }
+        return userRepository.save(value);
+    }
+
+    @Override
+    @Transactional
+    public User edit(MultipartFile avatar, User value) throws IOException {
+        if (avatar != null) {
+            File file = new File();
+            var file1 = fileService.add(avatar, file);
+            value.setAvatar(file1);
+        }
+        return userRepository.save(value);
+    }
 }

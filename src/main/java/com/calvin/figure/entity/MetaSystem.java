@@ -47,7 +47,7 @@ public class MetaSystem implements Serializable {
 	private String systemVersion;
 
 	@Column
-	private Integer count = 0;
+	private Integer count;
 
 	@Column
 	private String remark;
@@ -74,7 +74,7 @@ public class MetaSystem implements Serializable {
 
 	@JsonIgnore
 	@Version
-	private Integer version = 0;
+	private Integer version;
 
 	public Integer getId() {
 		return id;

@@ -11,12 +11,16 @@ import javax.servlet.http.HttpServletRequest;
 import com.calvin.figure.entity.User;
 import com.fasterxml.jackson.databind.JsonNode;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authorization.AuthorityAuthorizationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.client.HttpServerErrorException;
 
 public class CalUtility {
+
+    private static final Logger logger = LoggerFactory.getLogger(CalUtility.class);
 
     public Set<String> getFields(Authentication auth, int type, String metaTableName) {
         Set<String> fields = new HashSet<>();
@@ -88,8 +92,8 @@ public class CalUtility {
         }
     }
 
-    // 根据权限，把有可读权限的字段从source设置到target上。
-    public static <T> void copyFields(T target, T source, Set<String> perms, boolean includeNull) {
+    // 根据权限，把有可读权限的字段从source设置到target上。nulls如果为null，不复制值为null的字段，如果nulls不为null，nulls所包含的值为null的字段也要复制。"*"可以代表任意字段
+    public static <T> void copyFields(T target, T source, Set<String> perms, Set<String> nulls) {
         Field[] fields = target.getClass().getDeclaredFields();
         for (Field field : fields) {
             String name = field.getName();
@@ -107,14 +111,14 @@ public class CalUtility {
                         if (perms.contains("*") || perms.contains(name)) {
                             field.setAccessible(true);
                             Object fieldVal = field.get(source);
-                            if (includeNull) {
+                            if (nulls != null && (nulls.contains("*") || nulls.contains(name))) {
                                 field.set(target, fieldVal);
                             } else if (fieldVal != null) {
                                 field.set(target, fieldVal);
                             }
                         }
                     } catch (IllegalArgumentException | IllegalAccessException e) {
-                        e.printStackTrace();
+                        logger.error(e.getMessage(), e);
                         throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
                     }
                     break;

@@ -66,6 +66,10 @@ public class User implements UserDetails, CredentialsContainer {
     @Column(length = 14, unique = true)
     private String phone;
 
+    @ManyToOne
+    @JoinColumn
+    private File avatar;
+
     @Column
     private Instant expiryTime; // 账户的过期时间，null表示永不过期
 
@@ -178,6 +182,14 @@ public class User implements UserDetails, CredentialsContainer {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public File getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(File avatar) {
+        this.avatar = avatar;
     }
 
     public Instant getExpiryTime() {

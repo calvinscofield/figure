@@ -34,19 +34,19 @@ public class File implements Serializable {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer id;
 
-	@Column(length = 45, unique = true, nullable = false)
-	private String url;
-
-	@Column(length = 45, nullable = false)
+	@Column(length = 45, unique = true)
 	private String name;
 
-	@Column(nullable = false)
+	@Column(length = 45, unique = true, nullable = false)
 	private String filename;
+
+	@Column(nullable = false)
+	private String originalFilename;
 
 	@Column(length = 80, nullable = false)
 	private String contentType;
 
-	@Column
+	@Column(nullable = false)
 	private Long size;
 
 	@Column
@@ -74,7 +74,7 @@ public class File implements Serializable {
 
 	@JsonIgnore
 	@Version
-	private Integer version = 0;
+	private Integer version;
 
 	public Integer getId() {
 		return id;
@@ -84,12 +84,12 @@ public class File implements Serializable {
 		this.id = id;
 	}
 
-	public String getUrl() {
-		return url;
+	public String getName() {
+		return name;
 	}
 
-	public void setUrl(String url) {
-		this.url = url;
+	public void setName(String name) {
+		this.name = name;
 	}
 
 	public String getFilename() {
@@ -98,6 +98,14 @@ public class File implements Serializable {
 
 	public void setFilename(String filename) {
 		this.filename = filename;
+	}
+
+	public String getOriginalFilename() {
+		return originalFilename;
+	}
+
+	public void setOriginalFilename(String originalFilename) {
+		this.originalFilename = originalFilename;
 	}
 
 	public String getContentType() {
@@ -114,14 +122,6 @@ public class File implements Serializable {
 
 	public void setSize(Long size) {
 		this.size = size;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
 	}
 
 	public String getRemark() {

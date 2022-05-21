@@ -148,6 +148,7 @@ public class InitServiceImpl implements InitService {
             metaFields.add(new MetaField("name", metaTable, "昵称"));
             metaFields.add(new MetaField("email", metaTable, "邮箱"));
             metaFields.add(new MetaField("phone", metaTable, "电话"));
+            metaFields.add(new MetaField("avatar", metaTable, "头像"));
             metaFields.add(new MetaField("expiryTime", metaTable, "过期时间"));
             metaFields.add(new MetaField("locked", metaTable, "锁定"));
             metaFields.add(new MetaField("credentialsExpiryTime", metaTable, "凭证过期时间"));
@@ -205,9 +206,9 @@ public class InitServiceImpl implements InitService {
             permission.setMetaTable(metaTable);
             permissions.add(permission);
             metaFields.add(new MetaField("id", metaTable, "主键"));
-            metaFields.add(new MetaField("url", metaTable, "网址"));
             metaFields.add(new MetaField("name", metaTable, "名称"));
             metaFields.add(new MetaField("filename", metaTable, "文件名"));
+            metaFields.add(new MetaField("originalFilename", metaTable, "原始文件名"));
             metaFields.add(new MetaField("contentType", metaTable, "类型"));
             metaFields.add(new MetaField("size", metaTable, "大小"));
             metaFields.add(new MetaField("remark", metaTable, "备注"));
@@ -233,7 +234,7 @@ public class InitServiceImpl implements InitService {
             user.setPassword(passwordEncoder.encode("admin"));
             user.setRole(List.of(roles1.get(0)));
             users.add(user);
-            
+
             userRepository.saveAll(users);
         }
 

@@ -1,9 +1,12 @@
 package com.calvin.figure.controller;
 
+import java.io.IOException;
 import java.net.URI;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -14,8 +17,12 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import com.calvin.figure.CalUtility;
+import com.calvin.figure.entity.File;
 import com.calvin.figure.entity.QUser;
+import com.calvin.figure.entity.Role;
 import com.calvin.figure.entity.User;
+import com.calvin.figure.repository.FileRepository;
+import com.calvin.figure.repository.RoleRepository;
 import com.calvin.figure.repository.UserRepository;
 import com.calvin.figure.service.UserService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -25,7 +32,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
-import org.aspectj.weaver.ast.Instanceof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,8 +54,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("users")
@@ -59,6 +67,10 @@ public class UserController {
 
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private FileRepository fileRepository;
+    @Autowired
+    private RoleRepository roleRepository;
     @Autowired
     private UserService userService;
     @Autowired
@@ -148,27 +160,74 @@ public class UserController {
         return ResponseEntity.ok(body);
     }
 
-    @PostMapping
-    public ResponseEntity<Map<String, Object>> add(@RequestBody User value) {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (value.getUsername() == null || value.getUsername().isEmpty())
-            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【用户名】字段必传");
-        if (value.getPassword() == null || value.getPassword().isEmpty())
-            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【密码】字段必传");
+    private void validate(MultipartFile avatar, User value, JsonNode json) {
+        if (json == null || json.has("username")) {
+            if (value.getUsername() == null || value.getUsername().isEmpty())
+                throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【用户名】字段必传");
+            // anonymous作为保留用户名，用户不能新建
+            if ("anonymous".equals(value.getUsername().toLowerCase()))
+                throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY,
+                        String.format("【%s】不能作为用户名", value.getUsername()));
+        }
+        if (value.getName() != null && value.getName().isEmpty())
+            value.setName(null);
+        if (json == null || json.has("password")) {
+            if (value.getPassword() == null || value.getPassword().isEmpty())
+                throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【密码】字段必传");
+            value.setPassword(passwordEncoder.encode(value.getPassword()));
+        }
+        if (avatar != null) {
+            if (!avatar.getContentType().startsWith("image/"))
+                throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "头像必须是图片");
+            if (avatar.getSize() > 1048576)
+                throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "头像图片大小不能超过1MB");
+        } else if (json == null || json.has("avatar")) {
+            File avatar1 = value.getAvatar();
+            if (avatar1 != null)
+                if (value.getAvatar().getId() == null)
+                    throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "头像文件id不能为空");
+                else {
+                    var opt = fileRepository.findById(avatar1.getId());
+                    if (opt.isEmpty())
+                        throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "头像文件不存在");
+                    else {
+                        File f = opt.get();
+                        if (!f.getContentType().startsWith("image/"))
+                            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "头像必须是图片");
+                        if (f.getSize() > 1048576)
+                            throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "头像图片大小不能超过1MB");
+                        value.setAvatar(f);
+                    }
+                }
+        }
+        if (value.getRole() != null) {
+            List<Role> roles = new ArrayList<>();
+            for (var role : value.getRole()) {
+                if (role.getId() == null)
+                    throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【角色】字段id不能为空");
+                else {
+                    var optRole = roleRepository.findById(role.getId());
+                    if (optRole.isEmpty())
+                        throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【角色】记录不存在");
+                    roles.add(optRole.get());
+                }
+            }
+            value.setRole(roles);
+        }
+    }
 
+    @PostMapping
+    public ResponseEntity<Map<String, Object>> add(MultipartFile avatar, @RequestPart User value) throws IOException {
+        validate(avatar, value, null);
+        var auth = SecurityContextHolder.getContext().getAuthentication();
         // 验证所有不能为空的字段权限
         userService.check("user", "id", 0b10, auth);
         userService.check("user", "username", 0b10, auth);
         userService.check("user", "password", 0b10, auth);
-
-        if (value.getName() != null && value.getName().isEmpty())
-            value.setName(null);
         value.setId(null); // 防止通过这个接口进行修改。
-        value.setPassword(passwordEncoder.encode(value.getPassword()));
         Set<String> perms = calUtility.getFields(auth, 0b10, "user");
         CalUtility.copyFields(value, perms);
-        value.setVersion(0);
-        User value1 = userRepository.save(value);
+        User value1 = userService.add(avatar, value);
         value1.setPassword(null);
         Map<String, Object> body = new HashMap<>();
         body.put("data", value1);
@@ -176,7 +235,9 @@ public class UserController {
     }
 
     @PutMapping("{id}")
-    public ResponseEntity<Map<String, Object>> edit(@PathVariable("id") Integer id, @RequestBody User value) {
+    public ResponseEntity<Map<String, Object>> edit(@PathVariable("id") Integer id, MultipartFile avatar,
+            @RequestPart User value) throws IOException {
+        validate(avatar, value, null);
         var auth = SecurityContextHolder.getContext().getAuthentication();
         // 验证权限"user:*:w" *表示要全部满足
         userService.checkAll("user", 0b10, auth);
@@ -186,11 +247,9 @@ public class UserController {
         User target = opt.get();
         if (userService.isAdministrator(target))
             throw new HttpClientErrorException(HttpStatus.I_AM_A_TEAPOT, "不能修改内置管理员");
-        if (value.getPassword() != null)
-            value.setPassword(passwordEncoder.encode(value.getPassword()));
         Set<String> perms = calUtility.getFields(auth, 0b10, "user");
-        CalUtility.copyFields(target, value, perms, true);
-        User value1 = userRepository.save(target);
+        CalUtility.copyFields(target, value, perms, Set.of("*"));
+        User value1 = userService.edit(avatar, target);
         value1.setPassword(null);
         Map<String, Object> body = new HashMap<>();
         body.put("data", value1);
@@ -198,21 +257,26 @@ public class UserController {
     }
 
     @PatchMapping("{id}")
-    public ResponseEntity<Map<String, Object>> partialEdit(@PathVariable("id") Integer id, @RequestBody JsonNode json) {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        // 验证前端传过来的每一个字段名的权限。
-        var it = json.fieldNames();
-        while (it.hasNext()) {
-            userService.check("user", it.next(), 0b10, auth);
-        }
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
+    public ResponseEntity<Map<String, Object>> partialEdit(@PathVariable("id") Integer id, MultipartFile avatar,
+            @RequestPart JsonNode json) throws IOException {
         User value;
         try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
             value = objectMapper.readValue(json.toString(), User.class);
         } catch (JsonProcessingException e) {
             logger.error(e.getMessage());
             throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "传参有误");
+        }
+        validate(avatar, value, json);
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        // 验证前端传过来的每一个字段名的权限。
+        var it = json.fieldNames();
+        Set<String> nulls = new HashSet<>();
+        while (it.hasNext()) {
+            String key = it.next();
+            nulls.add(key);
+            userService.check("user", key, 0b10, auth);
         }
         Optional<User> opt = userRepository.findById(id);
         if (!opt.isPresent())
@@ -220,11 +284,9 @@ public class UserController {
         User target = opt.get();
         if (userService.isAdministrator(target))
             throw new HttpClientErrorException(HttpStatus.I_AM_A_TEAPOT, "不能修改内置管理员");
-        if (value.getPassword() != null)
-            value.setPassword(passwordEncoder.encode(value.getPassword()));
         Set<String> perms = calUtility.getFields(auth, 0b10, "user");
-        CalUtility.copyFields(target, value, perms, false);
-        User value1 = userRepository.save(target);
+        CalUtility.copyFields(target, value, perms, nulls);
+        User value1 = userService.edit(avatar, target);
         value1.setPassword(null);
         Map<String, Object> body = new HashMap<>();
         body.put("data", value1);
@@ -243,14 +305,20 @@ public class UserController {
     }
 
     @GetMapping("exist")
-    public ResponseEntity<Map<String, Object>> exist(User value, String matchMode) {
+    public ResponseEntity<Map<String, Object>> exist(User value, String matchMode, Integer excludeId) {
         Example<User> example;
         if ("any".equals(matchMode)) {
             ExampleMatcher matcher = ExampleMatcher.matchingAny();
             example = Example.of(value, matcher);
         } else
             example = Example.of(value);
-        boolean isExist = userRepository.exists(example);
+        boolean isExist;
+        if (excludeId == null)
+            isExist = userRepository.exists(example);
+        else {
+            var rows = userRepository.findAll(example);
+            isExist = rows.size() == 1 && !rows.get(0).getId().equals(excludeId) || rows.size() > 1;
+        }
         Map<String, Object> body = new HashMap<>();
         body.put("data", isExist);
         return ResponseEntity.ok(body);
@@ -264,14 +332,15 @@ public class UserController {
             throw new HttpClientErrorException(HttpStatus.UNAUTHORIZED, e.getMessage());
         } else {
             var auth = SecurityContextHolder.getContext().getAuthentication();
-            User user = (User) auth.getPrincipal();
-            User user1 = new User();
-            user1.setUsername(user.getUsername());
-            user1.setName(user.getName());
-            user1.setPerms(user.getPerms());
-            userService.sendLoginMail(user.getUsername(), calUtility.getClientIp(request));
+            User me = (User) auth.getPrincipal();
+            User user = new User();
+            user.setUsername(me.getUsername());
+            user.setName(me.getName());
+            user.setAvatar(me.getAvatar());
+            user.setPerms(me.getPerms());
+            userService.sendLoginMail(me.getUsername(), calUtility.getClientIp(request));
             Map<String, Object> body = new HashMap<>();
-            body.put("data", user1);
+            body.put("data", user);
             return ResponseEntity.ok(body);
         }
     }
@@ -331,10 +400,12 @@ public class UserController {
             user.setName("匿名");
             perms = userService.generateAnonymousPerms();
         } else {
-            User user1 = (User) auth.getPrincipal();
-            user.setUsername(user1.getUsername());
-            user.setName(user1.getName());
-            perms = userService.generatePerms(user1.getId());
+            User me = (User) auth.getPrincipal();
+            User me1 = userRepository.findById(me.getId()).get();
+            user.setUsername(me1.getUsername());
+            user.setName(me1.getName());
+            user.setAvatar(me1.getAvatar());
+            perms = userService.generatePerms(me1);
         }
         user.setPerms(perms);
         Map<String, Object> body = new HashMap<>();
@@ -348,8 +419,10 @@ public class UserController {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         // 验证前端传过来的每一个字段名的权限。
         var it = json.fieldNames();
+        Set<String> nulls = new HashSet<>();
         while (it.hasNext()) {
             String key = it.next();
+            nulls.add(key);
             userService.check("user", key, 0b10, auth);
         }
         ObjectMapper objectMapper = new ObjectMapper();
@@ -385,7 +458,7 @@ public class UserController {
             value.setPassword(passwordEncoder.encode(value.getPassword()));
         }
         Set<String> perms = calUtility.getFields(auth, 0b10, "user");
-        CalUtility.copyFields(target, value, perms, false);
+        CalUtility.copyFields(target, value, perms, nulls);
         User value1 = userRepository.save(target);
         value1.setPassword(null);
         Map<String, Object> body = new HashMap<>();

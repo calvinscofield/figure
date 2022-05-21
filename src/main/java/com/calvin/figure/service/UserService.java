@@ -1,5 +1,6 @@
 package com.calvin.figure.service;
 
+import java.io.IOException;
 import java.util.Collection;
 
 import com.calvin.figure.entity.User;
@@ -9,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface UserService {
 
@@ -39,4 +41,8 @@ public interface UserService {
     boolean isAdministrator(Integer id);
 
     UserDetails loadUserByEmail(String email) throws UsernameNotFoundException;
+
+    User add(MultipartFile avatar, User value) throws IOException;
+
+    User edit(MultipartFile avatar, User value) throws IOException;
 }
