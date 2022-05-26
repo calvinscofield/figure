@@ -7,10 +7,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import javax.servlet.http.HttpServletRequest;
@@ -112,7 +110,7 @@ public class UserController {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         // 验证权限"user:?:r" ?表示有任意一个满足即可
         userService.checkAny("user", 0b01, auth);
-        QUser q = QUser.user;
+        var q = QUser.user;
         var jPAQ = jPAQueryFactory.selectFrom(q);
         if (offset == null && limit != null)
             offset = 0;
@@ -128,8 +126,8 @@ public class UserController {
             jPAQ.offset(offset);
             jPAQ.limit(limit);
         }
-        List<User> rows = jPAQ.fetch();
-        Iterator<User> it = rows.iterator();
+        var rows = jPAQ.fetch();
+        var it = rows.iterator();
         while (it.hasNext()) {
             it.next().setPassword(null);
         }
@@ -148,10 +146,10 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> findById(@PathVariable("id") Integer id) {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         userService.checkAny("user", 0b01, auth);
-        Optional<User> opt = userRepository.findById(id);
-        if (!opt.isPresent())
+        var opt = userRepository.findById(id);
+        if (opt.isEmpty())
             throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-        User value = opt.get();
+        var value = opt.get();
         value.setPassword(null);
         Set<String> perms = calUtility.getFields(auth, 0b01, "user");
         CalUtility.copyFields(value, perms);
@@ -182,7 +180,7 @@ public class UserController {
             if (avatar.getSize() > 1048576)
                 throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "头像图片大小不能超过1MB");
         } else if (json == null || json.has("avatar")) {
-            File avatar1 = value.getAvatar();
+            var avatar1 = value.getAvatar();
             if (avatar1 != null)
                 if (value.getAvatar().getId() == null)
                     throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "头像文件id不能为空");
@@ -191,7 +189,7 @@ public class UserController {
                     if (opt.isEmpty())
                         throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "头像文件不存在");
                     else {
-                        File f = opt.get();
+                        var f = opt.get();
                         if (!f.getContentType().startsWith("image/"))
                             throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "头像必须是图片");
                         if (f.getSize() > 1048576)
@@ -227,7 +225,7 @@ public class UserController {
         value.setId(null); // 防止通过这个接口进行修改。
         Set<String> perms = calUtility.getFields(auth, 0b10, "user");
         CalUtility.copyFields(value, perms);
-        User value1 = userService.add(avatar, value);
+        var value1 = userService.add(avatar, value);
         value1.setPassword(null);
         Map<String, Object> body = new HashMap<>();
         body.put("data", value1);
@@ -241,15 +239,15 @@ public class UserController {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         // 验证权限"user:*:w" *表示要全部满足
         userService.checkAll("user", 0b10, auth);
-        Optional<User> opt = userRepository.findById(id);
-        if (!opt.isPresent())
+        var opt = userRepository.findById(id);
+        if (opt.isEmpty())
             throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-        User target = opt.get();
+        var target = opt.get();
         if (userService.isAdministrator(target))
             throw new HttpClientErrorException(HttpStatus.I_AM_A_TEAPOT, "不能修改内置管理员");
         Set<String> perms = calUtility.getFields(auth, 0b10, "user");
         CalUtility.copyFields(target, value, perms, Set.of("*"));
-        User value1 = userService.edit(avatar, target);
+        var value1 = userService.edit(avatar, target);
         value1.setPassword(null);
         Map<String, Object> body = new HashMap<>();
         body.put("data", value1);
@@ -278,15 +276,15 @@ public class UserController {
             nulls.add(key);
             userService.check("user", key, 0b10, auth);
         }
-        Optional<User> opt = userRepository.findById(id);
-        if (!opt.isPresent())
+        var opt = userRepository.findById(id);
+        if (opt.isEmpty())
             throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-        User target = opt.get();
+        var target = opt.get();
         if (userService.isAdministrator(target))
             throw new HttpClientErrorException(HttpStatus.I_AM_A_TEAPOT, "不能修改内置管理员");
         Set<String> perms = calUtility.getFields(auth, 0b10, "user");
         CalUtility.copyFields(target, value, perms, nulls);
-        User value1 = userService.edit(avatar, target);
+        var value1 = userService.edit(avatar, target);
         value1.setPassword(null);
         Map<String, Object> body = new HashMap<>();
         body.put("data", value1);
@@ -443,10 +441,10 @@ public class UserController {
         value.setDisabled(null);
 
         User me = (User) auth.getPrincipal();
-        Optional<User> opt = userRepository.findById(me.getId());
-        if (!opt.isPresent())
+        var opt = userRepository.findById(me.getId());
+        if (opt.isEmpty())
             throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-        User target = opt.get();
+        var target = opt.get();
         // 修改密码要验证原密码
         if (value.getPassword() != null) {
             if (checkPassword == null)
@@ -459,7 +457,7 @@ public class UserController {
         }
         Set<String> perms = calUtility.getFields(auth, 0b10, "user");
         CalUtility.copyFields(target, value, perms, nulls);
-        User value1 = userRepository.save(target);
+        var value1 = userRepository.save(target);
         value1.setPassword(null);
         Map<String, Object> body = new HashMap<>();
         body.put("data", value1);

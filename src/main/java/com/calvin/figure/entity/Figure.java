@@ -12,12 +12,10 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
-import javax.persistence.UniqueConstraint;
 import javax.persistence.Version;
 
 import com.calvin.figure.FigureApplication;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -26,9 +24,9 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = { "name", "meta_table_id" }))
+@Table
 @EntityListeners(AuditingEntityListener.class)
-public class MetaField implements Serializable {
+public class Figure implements Serializable {
 
 	private static final long serialVersionUID = FigureApplication.SERIAL_VERSION_UID;
 
@@ -36,16 +34,25 @@ public class MetaField implements Serializable {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer id;
 
+	@ManyToOne
+	@JoinColumn
+	private File portrait;
+
 	@Column(length = 45, nullable = false)
 	private String name;
 
 	@Column
-	private String displayName;
+	private String fullname;
 
-	@JsonIgnoreProperties({ "metaField", "createTime", "updateTime" })
-	@ManyToOne
-	@JoinColumn
-	private MetaTable metaTable;
+	@Column(nullable = false)
+	private String birthday;
+
+	// 用null表示该人物还活着
+	@Column
+	private String deathday;
+
+	@Column
+	private String remark;
 
 	@JsonIgnore
 	@ManyToOne
@@ -71,21 +78,20 @@ public class MetaField implements Serializable {
 	@Version
 	private Integer version;
 
-	public MetaField() {
-	}
-
-	public MetaField(String name, MetaTable metaTable, String displayName) {
-		this.name = name;
-		this.metaTable = metaTable;
-		this.displayName = displayName;
-	}
-
 	public Integer getId() {
 		return id;
 	}
 
 	public void setId(Integer id) {
 		this.id = id;
+	}
+
+	public File getPortrait() {
+		return portrait;
+	}
+
+	public void setPortrait(File portrait) {
+		this.portrait = portrait;
 	}
 
 	public String getName() {
@@ -96,28 +102,36 @@ public class MetaField implements Serializable {
 		this.name = name;
 	}
 
-	public MetaTable getMetaTable() {
-		return metaTable;
+	public String getFullname() {
+		return fullname;
 	}
 
-	public void setMetaTable(MetaTable metaTable) {
-		this.metaTable = metaTable;
+	public void setFullname(String fullname) {
+		this.fullname = fullname;
 	}
 
-	public String getDisplayName() {
-		return displayName;
+	public String getBirthday() {
+		return birthday;
 	}
 
-	public void setDisplayName(String displayName) {
-		this.displayName = displayName;
+	public void setBirthday(String birthday) {
+		this.birthday = birthday;
 	}
 
-	public User getModifier() {
-		return modifier;
+	public String getDeathday() {
+		return deathday;
 	}
 
-	public void setModifier(User modifier) {
-		this.modifier = modifier;
+	public void setDeathday(String deathday) {
+		this.deathday = deathday;
+	}
+
+	public String getRemark() {
+		return remark;
+	}
+
+	public void setRemark(String remark) {
+		this.remark = remark;
 	}
 
 	public User getCreator() {
@@ -126,6 +140,14 @@ public class MetaField implements Serializable {
 
 	public void setCreator(User creator) {
 		this.creator = creator;
+	}
+
+	public User getModifier() {
+		return modifier;
+	}
+
+	public void setModifier(User modifier) {
+		this.modifier = modifier;
 	}
 
 	public Instant getCreateTime() {

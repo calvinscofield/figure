@@ -5,15 +5,15 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.6.7</version>
+		<version>2.7.0</version>
 		<relativePath/>
 		<!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.calvin</groupId>
 	<artifactId>figure</artifactId>
-	<version>0.1.0</version>
+	<version>0.1.1</version>
 	<name>figure</name>
-	<description>Demo project for Spring Boot</description>
+	<description>figure project</description>
 	<properties>
 		<java.version>17</java.version>
 	</properties>
@@ -25,7 +25,7 @@
 		<dependency>
 			<groupId>com.vladmihalcea</groupId>
 			<artifactId>hibernate-types-55</artifactId>
-			<version>2.14.1</version>
+			<version>2.16.2</version>
 		</dependency>
 		<dependency>
 			<groupId>com.querydsl</groupId>

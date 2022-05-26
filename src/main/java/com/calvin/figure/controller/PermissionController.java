@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import com.calvin.figure.CalUtility;
@@ -68,7 +67,7 @@ public class PermissionController {
 		var auth = SecurityContextHolder.getContext().getAuthentication();
 		// 验证权限"permission:?:r" ?表示有任意一个满足即可
 		userService.checkAny("permission", 0b01, auth);
-		QPermission q = QPermission.permission;
+		var q = QPermission.permission;
 		var jPAQ = jPAQueryFactory.selectFrom(q);
 		if (offset == null && limit != null)
 			offset = 0;
@@ -83,7 +82,7 @@ public class PermissionController {
 			jPAQ.offset(offset);
 			jPAQ.limit(limit);
 		}
-		List<Permission> rows = jPAQ.fetch();
+		var rows = jPAQ.fetch();
 		Set<String> perms = calUtility.getFields(auth, 0b01, "permission");
 		CalUtility.copyFields(rows, perms);
 		Map<String, Object> body = new HashMap<>();
@@ -99,10 +98,10 @@ public class PermissionController {
 	public ResponseEntity<Map<String, Object>> findById(@PathVariable("id") Integer id) {
 		var auth = SecurityContextHolder.getContext().getAuthentication();
 		userService.checkAny("permission", 0b01, auth);
-		Optional<Permission> opt = permissionRepository.findById(id);
-		if (!opt.isPresent())
+		var opt = permissionRepository.findById(id);
+		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-		Permission value = opt.get();
+		var value = opt.get();
 		Set<String> perms = calUtility.getFields(auth, 0b01, "permission");
 		CalUtility.copyFields(value, perms);
 		Map<String, Object> body = new HashMap<>();
@@ -150,7 +149,7 @@ public class PermissionController {
 		value.setId(null); // 防止通过这个接口进行修改。
 		Set<String> perms = calUtility.getFields(auth, 0b10, "user");
 		CalUtility.copyFields(value, perms);
-		Permission value1 = permissionRepository.save(value);
+		var value1 = permissionRepository.save(value);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", value1);
 		return ResponseEntity.created(URI.create("/permissions/" + value1.getId())).body(body);
@@ -162,13 +161,13 @@ public class PermissionController {
 		var auth = SecurityContextHolder.getContext().getAuthentication();
 		// 验证权限"permission:*:w" *表示要全部满足
 		userService.checkAll("permission", 0b10, auth);
-		Optional<Permission> opt = permissionRepository.findById(id);
+		var opt = permissionRepository.findById(id);
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-		Permission target = opt.get();
+		var target = opt.get();
 		Set<String> perms = calUtility.getFields(auth, 0b10, "permission");
 		CalUtility.copyFields(target, value, perms, Set.of("*"));
-		Permission value1 = permissionRepository.save(target);
+		var value1 = permissionRepository.save(target);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", value1);
 		return ResponseEntity.created(URI.create("/permissions/" + id)).body(body);
@@ -195,13 +194,13 @@ public class PermissionController {
 			nulls.add(key);
 			userService.check("permission", key, 0b10, auth);
 		}
-		Optional<Permission> opt = permissionRepository.findById(id);
+		var opt = permissionRepository.findById(id);
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-		Permission target = opt.get();
+		var target = opt.get();
 		Set<String> perms = calUtility.getFields(auth, 0b10, "permission");
 		CalUtility.copyFields(target, value, perms, nulls);
-		Permission value1 = permissionRepository.save(target);
+		var value1 = permissionRepository.save(target);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", value1);
 		return ResponseEntity.created(URI.create("/permissions/" + id)).body(body);

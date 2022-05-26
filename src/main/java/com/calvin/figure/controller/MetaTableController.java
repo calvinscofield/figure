@@ -1,10 +1,8 @@
 package com.calvin.figure.controller;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import com.calvin.figure.entity.MetaTable;
 import com.calvin.figure.entity.QMetaTable;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -32,7 +30,7 @@ public class MetaTableController {
 		var auth = SecurityContextHolder.getContext().getAuthentication();
 		if (AuthorityAuthorizationManager.hasRole("ANONYMOUS").check(() -> auth, null).isGranted())
 			throw new HttpClientErrorException(HttpStatus.FORBIDDEN, "需要登录");
-		QMetaTable q = QMetaTable.metaTable;
+		var q = QMetaTable.metaTable;
 		var jPAQ = jPAQueryFactory.selectFrom(q);
 		if (offset == null && limit != null)
 			offset = 0;
@@ -47,7 +45,7 @@ public class MetaTableController {
 			jPAQ.offset(offset);
 			jPAQ.limit(limit);
 		}
-		List<MetaTable> rows = jPAQ.fetch();
+		var rows = jPAQ.fetch();
 		Map<String, Object> body = new HashMap<>();
 		if (paged) {
 			body.put("offset", offset + rows.size());

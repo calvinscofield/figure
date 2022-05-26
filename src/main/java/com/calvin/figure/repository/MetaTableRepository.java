@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MetaTableRepository extends JpaRepository<MetaTable, Integer> {
     Optional<MetaTable> findByName(String name);
+
+    boolean existsByName(String name);
 }

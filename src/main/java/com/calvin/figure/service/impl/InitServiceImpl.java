@@ -2,6 +2,7 @@ package com.calvin.figure.service.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import javax.transaction.Transactional;
 
@@ -66,28 +67,15 @@ public class InitServiceImpl implements InitService {
             metaSystem.setSystemVersion(version);
             metaSystem.setCount(1);
             metaSystemRepository.save(metaSystem);
+        }
 
-            List<MetaTable> metaTables = new ArrayList<>();
-            metaTables.add(new MetaTable("metaSystem", "系统元信息表"));
-            metaTables.add(new MetaTable("metaTable", "数据表元信息表"));
-            metaTables.add(new MetaTable("metaField", "字段元信息表"));
-            metaTables.add(new MetaTable("user", "用户表"));
-            metaTables.add(new MetaTable("role", "角色表"));
-            metaTables.add(new MetaTable("permission", "权限表"));
-            metaTables.add(new MetaTable("file", "文件表"));
+        List<Permission> permissions = new ArrayList<>();
+        TextNode field = JsonNodeFactory.instance.textNode("*");
 
-            List<MetaTable> metaTables1 = metaTableRepository.saveAll(metaTables);
-
+        // metaSystem 系统元信息表
+        if (!metaTableRepository.existsByName("metaSystem")) {
+            var metaTable = metaTableRepository.save(new MetaTable("metaSystem", "系统元信息表"));
             List<MetaField> metaFields = new ArrayList<>();
-            List<Permission> permissions = new ArrayList<>();
-            // metaSystem 系统元信息表
-            MetaTable metaTable = metaTables1.get(0);
-            Permission permission = new Permission();
-            permission.setName("系统元信息表全部");
-            TextNode field = JsonNodeFactory.instance.textNode("*");
-            permission.setField(field);
-            permission.setMetaTable(metaTable);
-            permissions.add(permission);
             metaFields.add(new MetaField("id", metaTable, "主键"));
             metaFields.add(new MetaField("name", metaTable, "名称"));
             metaFields.add(new MetaField("companyName", metaTable, "公司名称"));
@@ -100,14 +88,17 @@ public class InitServiceImpl implements InitService {
             metaFields.add(new MetaField("createTime", metaTable, "创建时间"));
             metaFields.add(new MetaField("updateTime", metaTable, "修改时间"));
             metaFieldRepository.saveAll(metaFields);
-            // metaTable 数据表元信息表
-            metaFields.clear();
-            metaTable = metaTables1.get(1);
-            permission = new Permission();
-            permission.setName("数据表元信息表全部");
+
+            Permission permission = new Permission();
             permission.setField(field);
+            permission.setName("系统元信息表全部");
             permission.setMetaTable(metaTable);
             permissions.add(permission);
+        }
+        // metaTable 数据表元信息表
+        if (!metaTableRepository.existsByName("metaTable")) {
+            var metaTable = metaTableRepository.save(new MetaTable("metaTable", "数据表元信息表"));
+            List<MetaField> metaFields = new ArrayList<>();
             metaFields.add(new MetaField("id", metaTable, "主键"));
             metaFields.add(new MetaField("name", metaTable, "名称"));
             metaFields.add(new MetaField("displayName", metaTable, "显示名称"));
@@ -117,14 +108,17 @@ public class InitServiceImpl implements InitService {
             metaFields.add(new MetaField("createTime", metaTable, "创建时间"));
             metaFields.add(new MetaField("updateTime", metaTable, "修改时间"));
             metaFieldRepository.saveAll(metaFields);
-            // metaField 字段元信息表
-            metaFields.clear();
-            metaTable = metaTables1.get(2);
-            permission = new Permission();
-            permission.setName("字段元信息表全部");
+
+            Permission permission = new Permission();
+            permission.setName("数据表元信息表全部");
             permission.setField(field);
             permission.setMetaTable(metaTable);
             permissions.add(permission);
+        }
+        // metaField 字段元信息表
+        if (!metaTableRepository.existsByName("metaField")) {
+            var metaTable = metaTableRepository.save(new MetaTable("metaField", "字段元信息表"));
+            List<MetaField> metaFields = new ArrayList<>();
             metaFields.add(new MetaField("id", metaTable, "主键"));
             metaFields.add(new MetaField("name", metaTable, "名称"));
             metaFields.add(new MetaField("displayName", metaTable, "显示名称"));
@@ -134,14 +128,17 @@ public class InitServiceImpl implements InitService {
             metaFields.add(new MetaField("createTime", metaTable, "创建时间"));
             metaFields.add(new MetaField("updateTime", metaTable, "修改时间"));
             metaFieldRepository.saveAll(metaFields);
-            // user 用户表
-            metaFields.clear();
-            metaTable = metaTables1.get(3);
-            permission = new Permission();
-            permission.setName("用户表全部");
+
+            Permission permission = new Permission();
+            permission.setName("字段元信息表全部");
             permission.setField(field);
             permission.setMetaTable(metaTable);
             permissions.add(permission);
+        }
+        // user 用户表
+        if (!metaTableRepository.existsByName("user")) {
+            var metaTable = metaTableRepository.save(new MetaTable("user", "用户表"));
+            List<MetaField> metaFields = new ArrayList<>();
             metaFields.add(new MetaField("id", metaTable, "主键"));
             metaFields.add(new MetaField("username", metaTable, "用户名"));
             metaFields.add(new MetaField("password", metaTable, "密码"));
@@ -160,14 +157,17 @@ public class InitServiceImpl implements InitService {
             metaFields.add(new MetaField("createTime", metaTable, "创建时间"));
             metaFields.add(new MetaField("updateTime", metaTable, "修改时间"));
             metaFieldRepository.saveAll(metaFields);
-            // role 角色表
-            metaFields.clear();
-            metaTable = metaTables1.get(4);
-            permission = new Permission();
-            permission.setName("角色表全部");
+
+            Permission permission = new Permission();
+            permission.setName("用户表全部");
             permission.setField(field);
             permission.setMetaTable(metaTable);
             permissions.add(permission);
+        }
+        // role 角色表
+        if (!metaTableRepository.existsByName("role")) {
+            var metaTable = metaTableRepository.save(new MetaTable("role", "角色表"));
+            List<MetaField> metaFields = new ArrayList<>();
             metaFields.add(new MetaField("id", metaTable, "主键"));
             metaFields.add(new MetaField("name", metaTable, "名称"));
             metaFields.add(new MetaField("remark", metaTable, "备注"));
@@ -178,14 +178,17 @@ public class InitServiceImpl implements InitService {
             metaFields.add(new MetaField("createTime", metaTable, "创建时间"));
             metaFields.add(new MetaField("updateTime", metaTable, "修改时间"));
             metaFieldRepository.saveAll(metaFields);
-            // permission 权限表
-            metaFields.clear();
-            metaTable = metaTables1.get(5);
-            permission = new Permission();
-            permission.setName("权限表全部");
+
+            Permission permission = new Permission();
+            permission.setName("角色表全部");
             permission.setField(field);
             permission.setMetaTable(metaTable);
             permissions.add(permission);
+        }
+        // permission 权限表
+        if (!metaTableRepository.existsByName("permission")) {
+            var metaTable = metaTableRepository.save(new MetaTable("permission", "权限表"));
+            List<MetaField> metaFields = new ArrayList<>();
             metaFields.add(new MetaField("id", metaTable, "主键"));
             metaFields.add(new MetaField("name", metaTable, "名称"));
             metaFields.add(new MetaField("metaTable", metaTable, "数据表元信息"));
@@ -197,14 +200,17 @@ public class InitServiceImpl implements InitService {
             metaFields.add(new MetaField("createTime", metaTable, "创建时间"));
             metaFields.add(new MetaField("updateTime", metaTable, "修改时间"));
             metaFieldRepository.saveAll(metaFields);
-            // file 文件表
-            metaFields.clear();
-            metaTable = metaTables1.get(6);
-            permission = new Permission();
-            permission.setName("文件表全部");
+
+            Permission permission = new Permission();
+            permission.setName("权限表全部");
             permission.setField(field);
             permission.setMetaTable(metaTable);
             permissions.add(permission);
+        }
+        // file 文件表
+        if (!metaTableRepository.existsByName("file")) {
+            var metaTable = metaTableRepository.save(new MetaTable("file", "文件表"));
+            List<MetaField> metaFields = new ArrayList<>();
             metaFields.add(new MetaField("id", metaTable, "主键"));
             metaFields.add(new MetaField("name", metaTable, "名称"));
             metaFields.add(new MetaField("filename", metaTable, "文件名"));
@@ -217,27 +223,59 @@ public class InitServiceImpl implements InitService {
             metaFields.add(new MetaField("createTime", metaTable, "创建时间"));
             metaFields.add(new MetaField("updateTime", metaTable, "修改时间"));
             metaFieldRepository.saveAll(metaFields);
-            List<Permission> permissions1 = permissionRepository.saveAll(permissions);
 
-            List<Role> roles = new ArrayList<>();
-            Role role = new Role();
-            role.setName("admin");
-            role.setPermission(permissions1);
-            roles.add(role);
-            var roles1 = roleRepository.saveAll(roles);
-
-            List<User> users = new ArrayList<>();
-            User user = new User("administrator");
-            user.setPassword(passwordEncoder.encode("administrator"));
-            users.add(user);
-            user = new User("admin");
-            user.setPassword(passwordEncoder.encode("admin"));
-            user.setRole(List.of(roles1.get(0)));
-            users.add(user);
-
-            userRepository.saveAll(users);
+            Permission permission = new Permission();
+            permission.setName("文件表全部");
+            permission.setField(field);
+            permission.setMetaTable(metaTable);
+            permissions.add(permission);
         }
 
-    }
+        // figure 人物表
+        if (!metaTableRepository.existsByName("figure")) {
+            var metaTable = metaTableRepository.save(new MetaTable("figure", "人物表"));
+            List<MetaField> metaFields = new ArrayList<>();
+            metaFields.add(new MetaField("id", metaTable, "主键"));
+            metaFields.add(new MetaField("portrait", metaTable, "肖像"));
+            metaFields.add(new MetaField("name", metaTable, "名字"));
+            metaFields.add(new MetaField("fullname", metaTable, "全名"));
+            metaFields.add(new MetaField("birthday", metaTable, "生辰"));
+            metaFields.add(new MetaField("deathday", metaTable, "忌辰"));
+            metaFields.add(new MetaField("remark", metaTable, "备注"));
+            metaFields.add(new MetaField("creator", metaTable, "创建者"));
+            metaFields.add(new MetaField("modifier", metaTable, "修改者"));
+            metaFields.add(new MetaField("createTime", metaTable, "创建时间"));
+            metaFields.add(new MetaField("updateTime", metaTable, "修改时间"));
+            metaFieldRepository.saveAll(metaFields);
 
+            Permission permission = new Permission();
+            permission.setName("人物表全部");
+            permission.setField(field);
+            permission.setMetaTable(metaTable);
+            permissions.add(permission);
+        }
+
+        if (permissions.size() > 0) {
+            List<Permission> permissions1 = permissionRepository.saveAll(permissions);
+            try {
+                Role role = roleRepository.findByName("admin").get();
+                role.getPermission().addAll(permissions1);
+                roleRepository.save(role);
+            } catch (NoSuchElementException e) {
+                Role role = new Role();
+                role.setName("admin");
+                role.setPermission(permissions1);
+                Role role1 = roleRepository.save(role);
+                List<User> users = new ArrayList<>();
+                User user = new User("administrator");
+                user.setPassword(passwordEncoder.encode("administrator"));
+                users.add(user);
+                user = new User("admin");
+                user.setPassword(passwordEncoder.encode("admin"));
+                user.setRole(List.of(role1));
+                users.add(user);
+                userRepository.saveAll(users);
+            }
+        }
+    }
 }

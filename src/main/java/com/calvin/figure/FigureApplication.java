@@ -72,7 +72,7 @@ public class FigureApplication {
 				registry.addInterceptor(calInterceptor())
 						.addPathPatterns("/**")
 						.excludePathPatterns("/users/login", "/users/logout", "/error", "/users/register",
-								"/users/emailLoginCode", "/users/emailRegisterCode", "/users/exist");
+								"/users/emailLoginCode", "/users/emailRegisterCode", "/users/exist", "/init");
 			}
 		};
 	}

@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import com.calvin.figure.CalUtility;
@@ -65,7 +64,7 @@ public class RoleController {
 		var auth = SecurityContextHolder.getContext().getAuthentication();
 		// 验证权限"role:?:r" ?表示有任意一个满足即可
 		userService.checkAny("role", 0b01, auth);
-		QRole q = QRole.role;
+		var q = QRole.role;
 		var jPAQ = jPAQueryFactory.selectFrom(q);
 		if (offset == null && limit != null)
 			offset = 0;
@@ -80,7 +79,7 @@ public class RoleController {
 			jPAQ.offset(offset);
 			jPAQ.limit(limit);
 		}
-		List<Role> rows = jPAQ.fetch();
+		var rows = jPAQ.fetch();
 		Set<String> perms = calUtility.getFields(auth, 0b01, "role");
 		CalUtility.copyFields(rows, perms);
 		Map<String, Object> body = new HashMap<>();
@@ -96,10 +95,10 @@ public class RoleController {
 	public ResponseEntity<Map<String, Object>> findById(@PathVariable("id") Integer id) {
 		var auth = SecurityContextHolder.getContext().getAuthentication();
 		userService.checkAny("role", 0b01, auth);
-		Optional<Role> opt = roleRepository.findById(id);
-		if (!opt.isPresent())
+		var opt = roleRepository.findById(id);
+		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-		Role value = opt.get();
+		var value = opt.get();
 		Set<String> perms = calUtility.getFields(auth, 0b01, "role");
 		CalUtility.copyFields(value, perms);
 		Map<String, Object> body = new HashMap<>();
@@ -142,7 +141,7 @@ public class RoleController {
 		value.setId(null); // 防止通过这个接口进行修改。
 		Set<String> perms = calUtility.getFields(auth, 0b10, "role");
 		CalUtility.copyFields(value, perms);
-		Role value1 = roleRepository.save(value);
+		var value1 = roleRepository.save(value);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", value1);
 		return ResponseEntity.created(URI.create("/roles/" + value1.getId())).body(body);
@@ -154,13 +153,13 @@ public class RoleController {
 		var auth = SecurityContextHolder.getContext().getAuthentication();
 		// 验证权限"role:*:w" *表示要全部满足
 		userService.checkAll("role", 0b10, auth);
-		Optional<Role> opt = roleRepository.findById(id);
-		if (!opt.isPresent())
+		var opt = roleRepository.findById(id);
+		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-		Role target = opt.get();
+		var target = opt.get();
 		Set<String> perms = calUtility.getFields(auth, 0b10, "role");
 		CalUtility.copyFields(target, value, perms, Set.of("*"));
-		Role value1 = roleRepository.save(target);
+		var value1 = roleRepository.save(target);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", value1);
 		return ResponseEntity.created(URI.create("/roles/" + id)).body(body);
@@ -187,13 +186,13 @@ public class RoleController {
 			nulls.add(key);
 			userService.check("role", key, 0b10, auth);
 		}
-		Optional<Role> opt = roleRepository.findById(id);
+		var opt = roleRepository.findById(id);
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-		Role target = opt.get();
+		var target = opt.get();
 		Set<String> perms = calUtility.getFields(auth, 0b10, "role");
 		CalUtility.copyFields(target, value, perms, nulls);
-		Role value1 = roleRepository.save(target);
+		var value1 = roleRepository.save(target);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", value1);
 		return ResponseEntity.created(URI.create("/roles/" + id)).body(body);

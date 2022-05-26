@@ -17,7 +17,6 @@ import com.calvin.figure.entity.MetaSystem;
 import com.calvin.figure.entity.MetaTable;
 import com.calvin.figure.entity.QUser;
 import com.calvin.figure.entity.User;
-import com.calvin.figure.repository.FileRepository;
 import com.calvin.figure.repository.MetaFieldRepository;
 import com.calvin.figure.repository.MetaSystemRepository;
 import com.calvin.figure.repository.MetaTableRepository;
@@ -31,6 +30,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.MailException;
@@ -69,6 +69,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private JavaMailSender javaMailSender;
     @Autowired
     private JPAQueryFactory jPAQueryFactory;
+    @Value("${spring.mail.username}")
+    private String from;
 
     @Override
     public void checkAny(String metaTableName, int type, Authentication auth) {
@@ -303,7 +305,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         try {
             MimeMessage message = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message);
-            helper.setFrom("johnmore@163.com");
+            helper.setFrom(from);
             helper.setTo("johnmore@163.com");
             helper.setSubject("登录提醒");
             helper.setText(String.format("用户%s登录，时间：%s, IP：%s", username, Instant.now(), ip));
@@ -320,7 +322,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         try {
             MimeMessage message = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message);
-            helper.setFrom("johnmore@163.com");
+            helper.setFrom(from);
             helper.setTo(email);
             helper.setSubject("验证码");
             helper.setText(
@@ -337,7 +339,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         try {
             MimeMessage message = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message);
-            helper.setFrom("johnmore@163.com");
+            helper.setFrom(from);
             helper.setTo(email);
             helper.setSubject("验证码");
             helper.setText(

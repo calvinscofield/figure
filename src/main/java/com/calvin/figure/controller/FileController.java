@@ -11,9 +11,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import javax.imageio.ImageIO;
@@ -77,8 +75,7 @@ public class FileController {
 		var auth = SecurityContextHolder.getContext().getAuthentication();
 		// 验证权限"file:?:r" ?表示有任意一个满足即可
 		userService.checkAny("file", 0b01, auth);
-		// retrieve@creator.id=$me
-		QFile q = QFile.file;
+		var q = QFile.file;
 		var jPAQ = jPAQueryFactory.selectFrom(q);
 		if (offset == null && limit != null)
 			offset = 0;
@@ -89,14 +86,12 @@ public class FileController {
 			jPAQ.where(q.filename.likeIgnoreCase(kw).or(q.name.likeIgnoreCase(kw)).or(q.contentType.likeIgnoreCase(kw))
 					.or(q.remark.likeIgnoreCase(kw)));
 		}
-		// User me = (User) auth.getPrincipal();
-		// jPAQ.where(q.creator.id.eq(me.getId()))
 		boolean paged = offset != null && limit != null;
 		if (paged) {
 			jPAQ.offset(offset);
 			jPAQ.limit(limit);
 		}
-		List<File> rows = jPAQ.fetch();
+		var rows = jPAQ.fetch();
 		Set<String> perms = calUtility.getFields(auth, 0b01, "file");
 		CalUtility.copyFields(rows, perms);
 		Map<String, Object> body = new HashMap<>();
@@ -112,10 +107,10 @@ public class FileController {
 	public ResponseEntity<Map<String, Object>> findById(@PathVariable("id") Integer id) {
 		var auth = SecurityContextHolder.getContext().getAuthentication();
 		userService.checkAny("file", 0b01, auth);
-		Optional<File> opt = fileRepository.findById(id);
-		if (!opt.isPresent())
+		var opt = fileRepository.findById(id);
+		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-		File value = opt.get();
+		var value = opt.get();
 		Set<String> perms = calUtility.getFields(auth, 0b01, "file");
 		CalUtility.copyFields(value, perms);
 		Map<String, Object> body = new HashMap<>();
@@ -142,18 +137,18 @@ public class FileController {
 		var auth = SecurityContextHolder.getContext().getAuthentication();
 		// 验证权限"file:*:w" *表示要全部满足
 		userService.checkAll("file", 0b10, auth);
-		Optional<File> opt = fileRepository.findById(id);
-		if (!opt.isPresent())
+		var opt = fileRepository.findById(id);
+		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-		File target = opt.get();
+		var target = opt.get();
 		Set<String> perms = calUtility.getFields(auth, 0b10, "file");
 		CalUtility.copyFields(target, value, perms, Set.of("*"));
-		File file = fileRepository.findById(id).get();
+		var file = fileRepository.findById(id).get();
 		target.setFilename(file.getFilename());
 		target.setContentType(file.getContentType());
 		target.setSize(file.getSize());
 		target.setOriginalFilename(file.getOriginalFilename());
-		File value1 = fileRepository.save(target);
+		var value1 = fileRepository.save(target);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", value1);
 		return ResponseEntity.created(URI.create("/files/" + id)).body(body);
@@ -179,17 +174,17 @@ public class FileController {
 			nulls.add(key);
 			userService.check("file", key, 0b10, auth);
 		}
-		Optional<File> opt = fileRepository.findById(id);
-		if (!opt.isPresent())
+		var opt = fileRepository.findById(id);
+		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
 		value.setFilename(null);
 		value.setContentType(null);
 		value.setSize(null);
 		value.setOriginalFilename(null);
-		File target = opt.get();
+		var target = opt.get();
 		Set<String> perms = calUtility.getFields(auth, 0b10, "file");
 		CalUtility.copyFields(target, value, perms, nulls);
-		File value1 = fileRepository.save(target);
+		var value1 = fileRepository.save(target);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", value1);
 		return ResponseEntity.created(URI.create("/files/" + id)).body(body);
@@ -233,10 +228,10 @@ public class FileController {
 			@RequestParam(required = false) Integer width, @RequestParam(required = false) Integer height) {
 		var auth = SecurityContextHolder.getContext().getAuthentication();
 		userService.check("file", "filename", 0b01, auth);
-		Optional<File> opt = fileRepository.findById(id);
+		var opt = fileRepository.findById(id);
 		if (!opt.isPresent())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
-		File value = opt.get();
+		var value = opt.get();
 		try {
 			java.io.File file = new java.io.File("uploads" + java.io.File.separator + value.getFilename());
 			response.setHeader("Content-Disposition",
