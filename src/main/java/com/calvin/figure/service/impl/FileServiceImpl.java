@@ -6,7 +6,9 @@ import java.util.UUID;
 
 import javax.transaction.Transactional;
 
+import com.calvin.figure.entity.Figure;
 import com.calvin.figure.entity.User;
+import com.calvin.figure.repository.FigureRepository;
 import com.calvin.figure.repository.FileRepository;
 import com.calvin.figure.repository.UserRepository;
 import com.calvin.figure.service.FileService;
@@ -25,6 +27,8 @@ public class FileServiceImpl implements FileService {
     private FileRepository fileRepository;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private FigureRepository figureRepository;
 
     @Override
     public File saveFile(MultipartFile file, String filename) throws IOException {
@@ -69,6 +73,20 @@ public class FileServiceImpl implements FileService {
         user.setAvatar(avatar);
         if (userRepository.exists(Example.of(user)))
             throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "有用户头像使用该文件");
+    }
+
+    @Override
+    public boolean exists(String table, Object t) {
+        boolean b = false;
+        switch (table) {
+            case "user":
+                b = userRepository.exists(Example.of((User) t));
+                break;
+            case "figure":
+                b = figureRepository.exists(Example.of((Figure) t));
+                break;
+        }
+        return b;
     }
 
 }

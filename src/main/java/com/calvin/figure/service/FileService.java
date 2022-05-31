@@ -16,4 +16,6 @@ public interface FileService {
     boolean delFile(String url);
 
     void constraint(Integer id);
+
+    boolean exists(String table, Object t);
 }

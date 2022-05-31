@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.util.HashMap;
@@ -19,7 +20,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.calvin.figure.CalUtility;
 import com.calvin.figure.entity.File;
+import com.calvin.figure.entity.QFigure;
 import com.calvin.figure.entity.QFile;
+import com.calvin.figure.entity.QUser;
 import com.calvin.figure.repository.FileRepository;
 import com.calvin.figure.service.FileService;
 import com.calvin.figure.service.UserService;
@@ -27,6 +30,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.querydsl.core.types.EntityPath;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import org.slf4j.Logger;
@@ -66,8 +70,6 @@ public class FileController {
 	private UserService userService;
 	@Autowired
 	private JPAQueryFactory jPAQueryFactory;
-	@Autowired
-	private CalUtility calUtility;
 
 	@GetMapping
 	public ResponseEntity<Map<String, Object>> find(@RequestParam(required = false) Integer offset,
@@ -92,7 +94,7 @@ public class FileController {
 			jPAQ.limit(limit);
 		}
 		var rows = jPAQ.fetch();
-		Set<String> perms = calUtility.getFields(auth, 0b01, "file");
+		Set<String> perms = userService.getFields(auth, 0b01, "file");
 		CalUtility.copyFields(rows, perms);
 		Map<String, Object> body = new HashMap<>();
 		if (paged) {
@@ -111,7 +113,7 @@ public class FileController {
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
 		var value = opt.get();
-		Set<String> perms = calUtility.getFields(auth, 0b01, "file");
+		Set<String> perms = userService.getFields(auth, 0b01, "file");
 		CalUtility.copyFields(value, perms);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", value);
@@ -125,7 +127,7 @@ public class FileController {
 			throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【文件】必传");
 		// 验证所有不能为空的字段权限
 		userService.check("file", "id", 0b10, auth);
-		Set<String> perms = calUtility.getFields(auth, 0b10, "file");
+		Set<String> perms = userService.getFields(auth, 0b10, "file");
 		CalUtility.copyFields(value, perms);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", fileService.add(file, value));
@@ -141,7 +143,7 @@ public class FileController {
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
 		var target = opt.get();
-		Set<String> perms = calUtility.getFields(auth, 0b10, "file");
+		Set<String> perms = userService.getFields(auth, 0b10, "file");
 		CalUtility.copyFields(target, value, perms, Set.of("*"));
 		var file = fileRepository.findById(id).get();
 		target.setFilename(file.getFilename());
@@ -182,7 +184,7 @@ public class FileController {
 		value.setSize(null);
 		value.setOriginalFilename(null);
 		var target = opt.get();
-		Set<String> perms = calUtility.getFields(auth, 0b10, "file");
+		Set<String> perms = userService.getFields(auth, 0b10, "file");
 		CalUtility.copyFields(target, value, perms, nulls);
 		var value1 = fileRepository.save(target);
 		Map<String, Object> body = new HashMap<>();
@@ -224,10 +226,41 @@ public class FileController {
 	}
 
 	@GetMapping("view/{id}")
-	public void view(HttpServletResponse response, @PathVariable("id") Integer id,
-			@RequestParam(required = false) Integer width, @RequestParam(required = false) Integer height) {
+	public void view(HttpServletResponse response, @PathVariable("id") Integer id, Integer width, Integer height,
+			String table, String field) {
+		if (table == null)
+			table = "file";
+		if (field == null)
+			field = "filename";
+		if (!"file".equals(table)) {
+			try {
+				char[] cs = table.toCharArray();
+				cs[0] -= 32;
+				var capitalizedTable = String.valueOf(cs);
+				var clazz = Class.forName("com.calvin.figure.entity." + capitalizedTable);
+				var f = clazz.getDeclaredField(field);
+				if (!"com.calvin.figure.entity.File".equals(f.getType().getName()))
+					throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY,
+							String.format("【%s】表【%s】字段不是文件", table, field));
+				var t = clazz.getDeclaredConstructor().newInstance();
+				var f1 = new File();
+				f1.setId(id);
+				f.setAccessible(true);
+				f.set(t, f1);
+				if (!fileService.exists(table, t))
+					throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
+			} catch (ClassNotFoundException e) {
+				throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, String.format("【%s】表不存在", table));
+			} catch (NoSuchFieldException | SecurityException e) {
+				throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, String.format("【%s】字段不存在", field));
+			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+					| InvocationTargetException | NoSuchMethodException e) {
+				throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY,
+						String.format("【%s】构造函数不存在", table));
+			}
+		}
 		var auth = SecurityContextHolder.getContext().getAuthentication();
-		userService.check("file", "filename", 0b01, auth);
+		userService.check(table, field, 0b01, auth);
 		var opt = fileRepository.findById(id);
 		if (!opt.isPresent())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");

@@ -15,7 +15,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import com.calvin.figure.CalUtility;
-import com.calvin.figure.entity.File;
 import com.calvin.figure.entity.QUser;
 import com.calvin.figure.entity.Role;
 import com.calvin.figure.entity.User;
@@ -26,7 +25,6 @@ import com.calvin.figure.service.UserService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -127,12 +125,12 @@ public class UserController {
             jPAQ.limit(limit);
         }
         var rows = jPAQ.fetch();
+        Set<String> perms = userService.getFields(auth, 0b01, "user");
+        CalUtility.copyFields(rows, perms);
         var it = rows.iterator();
         while (it.hasNext()) {
             it.next().setPassword(null);
         }
-        Set<String> perms = calUtility.getFields(auth, 0b01, "user");
-        CalUtility.copyFields(rows, perms);
         Map<String, Object> body = new HashMap<>();
         if (paged) {
             body.put("offset", offset + rows.size());
@@ -150,9 +148,9 @@ public class UserController {
         if (opt.isEmpty())
             throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
         var value = opt.get();
-        value.setPassword(null);
-        Set<String> perms = calUtility.getFields(auth, 0b01, "user");
+        Set<String> perms = userService.getFields(auth, 0b01, "user");
         CalUtility.copyFields(value, perms);
+        value.setPassword(null);
         Map<String, Object> body = new HashMap<>();
         body.put("data", value);
         return ResponseEntity.ok(body);
@@ -223,7 +221,7 @@ public class UserController {
         userService.check("user", "username", 0b10, auth);
         userService.check("user", "password", 0b10, auth);
         value.setId(null); // 防止通过这个接口进行修改。
-        Set<String> perms = calUtility.getFields(auth, 0b10, "user");
+        Set<String> perms = userService.getFields(auth, 0b10, "user");
         CalUtility.copyFields(value, perms);
         var value1 = userService.add(avatar, value);
         value1.setPassword(null);
@@ -245,7 +243,7 @@ public class UserController {
         var target = opt.get();
         if (userService.isAdministrator(target))
             throw new HttpClientErrorException(HttpStatus.I_AM_A_TEAPOT, "不能修改内置管理员");
-        Set<String> perms = calUtility.getFields(auth, 0b10, "user");
+        Set<String> perms = userService.getFields(auth, 0b10, "user");
         CalUtility.copyFields(target, value, perms, Set.of("*"));
         var value1 = userService.edit(avatar, target);
         value1.setPassword(null);
@@ -282,7 +280,7 @@ public class UserController {
         var target = opt.get();
         if (userService.isAdministrator(target))
             throw new HttpClientErrorException(HttpStatus.I_AM_A_TEAPOT, "不能修改内置管理员");
-        Set<String> perms = calUtility.getFields(auth, 0b10, "user");
+        Set<String> perms = userService.getFields(auth, 0b10, "user");
         CalUtility.copyFields(target, value, perms, nulls);
         var value1 = userService.edit(avatar, target);
         value1.setPassword(null);
@@ -345,11 +343,11 @@ public class UserController {
 
     @PostMapping("logout")
     public ResponseEntity<Map<String, Object>> logout() {
-        User user = new User("anonymous");
-        ObjectNode perms = userService.generateAnonymousPerms();
-        user.setPerms(perms);
+        User me = userService.generateAnonymousUser();
+        var perms = userService.generatePerms(me);
+        me.setPerms(perms);
         Map<String, Object> body = new HashMap<>();
-        body.put("data", user);
+        body.put("data", me);
         return ResponseEntity.ok(body);
     }
 
@@ -391,20 +389,18 @@ public class UserController {
     @GetMapping("me")
     public ResponseEntity<Map<String, Object>> me() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        User user = new User();
-        ObjectNode perms;
+        User me1;
         if (AuthorityAuthorizationManager.hasRole("ANONYMOUS").check(() -> auth, null).isGranted()) {
-            user.setUsername("anonymous");
-            user.setName("匿名");
-            perms = userService.generateAnonymousPerms();
+            me1 = userService.generateAnonymousUser();
         } else {
             User me = (User) auth.getPrincipal();
-            User me1 = userRepository.findById(me.getId()).get();
-            user.setUsername(me1.getUsername());
-            user.setName(me1.getName());
-            user.setAvatar(me1.getAvatar());
-            perms = userService.generatePerms(me1);
+            me1 = userRepository.findById(me.getId()).get();
         }
+        var perms = userService.generatePerms(me1);
+        User user = new User();
+        user.setUsername(me1.getUsername());
+        user.setName(me1.getName());
+        user.setAvatar(me1.getAvatar());
         user.setPerms(perms);
         Map<String, Object> body = new HashMap<>();
         body.put("data", user);
@@ -455,7 +451,7 @@ public class UserController {
             }
             value.setPassword(passwordEncoder.encode(value.getPassword()));
         }
-        Set<String> perms = calUtility.getFields(auth, 0b10, "user");
+        Set<String> perms = userService.getFields(auth, 0b10, "user");
         CalUtility.copyFields(target, value, perms, nulls);
         var value1 = userRepository.save(target);
         value1.setPassword(null);

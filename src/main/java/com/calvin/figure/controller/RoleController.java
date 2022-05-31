@@ -55,9 +55,6 @@ public class RoleController {
 	private UserService userService;
 	@Autowired
 	private JPAQueryFactory jPAQueryFactory;
-	@Autowired
-	private CalUtility calUtility;
-
 	@GetMapping
 	public ResponseEntity<Map<String, Object>> find(@RequestParam(required = false) Integer offset,
 			@RequestParam(required = false) Integer limit, @RequestParam(required = false) String keyword) {
@@ -80,7 +77,7 @@ public class RoleController {
 			jPAQ.limit(limit);
 		}
 		var rows = jPAQ.fetch();
-		Set<String> perms = calUtility.getFields(auth, 0b01, "role");
+		Set<String> perms = userService.getFields(auth, 0b01, "role");
 		CalUtility.copyFields(rows, perms);
 		Map<String, Object> body = new HashMap<>();
 		if (paged) {
@@ -99,7 +96,7 @@ public class RoleController {
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
 		var value = opt.get();
-		Set<String> perms = calUtility.getFields(auth, 0b01, "role");
+		Set<String> perms = userService.getFields(auth, 0b01, "role");
 		CalUtility.copyFields(value, perms);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", value);
@@ -139,7 +136,7 @@ public class RoleController {
 		userService.check("role", "id", 0b10, auth);
 		userService.check("role", "name", 0b10, auth);
 		value.setId(null); // 防止通过这个接口进行修改。
-		Set<String> perms = calUtility.getFields(auth, 0b10, "role");
+		Set<String> perms = userService.getFields(auth, 0b10, "role");
 		CalUtility.copyFields(value, perms);
 		var value1 = roleRepository.save(value);
 		Map<String, Object> body = new HashMap<>();
@@ -157,7 +154,7 @@ public class RoleController {
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
 		var target = opt.get();
-		Set<String> perms = calUtility.getFields(auth, 0b10, "role");
+		Set<String> perms = userService.getFields(auth, 0b10, "role");
 		CalUtility.copyFields(target, value, perms, Set.of("*"));
 		var value1 = roleRepository.save(target);
 		Map<String, Object> body = new HashMap<>();
@@ -190,7 +187,7 @@ public class RoleController {
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
 		var target = opt.get();
-		Set<String> perms = calUtility.getFields(auth, 0b10, "role");
+		Set<String> perms = userService.getFields(auth, 0b10, "role");
 		CalUtility.copyFields(target, value, perms, nulls);
 		var value1 = roleRepository.save(target);
 		Map<String, Object> body = new HashMap<>();

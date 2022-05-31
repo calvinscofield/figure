@@ -2,6 +2,7 @@ package com.calvin.figure.service;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Set;
 
 import com.calvin.figure.entity.User;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -24,7 +25,9 @@ public interface UserService {
 
     User generateAuthorities(Collection<GrantedAuthority> authorities, Integer id);
 
-    ObjectNode generateAnonymousPerms();
+    User generateAuthorities(Collection<GrantedAuthority> authorities);
+
+    User generateAnonymousUser();
 
     ObjectNode generatePerms(User user);
 
@@ -45,4 +48,6 @@ public interface UserService {
     User add(MultipartFile avatar, User value) throws IOException;
 
     User edit(MultipartFile avatar, User value) throws IOException;
+
+    Set<String> getFields(Authentication auth, int type, String metaTableName);
 }

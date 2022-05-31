@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
@@ -16,13 +18,16 @@ import com.calvin.figure.entity.MetaField;
 import com.calvin.figure.entity.MetaSystem;
 import com.calvin.figure.entity.MetaTable;
 import com.calvin.figure.entity.QUser;
+import com.calvin.figure.entity.Role;
 import com.calvin.figure.entity.User;
 import com.calvin.figure.repository.MetaFieldRepository;
 import com.calvin.figure.repository.MetaSystemRepository;
 import com.calvin.figure.repository.MetaTableRepository;
+import com.calvin.figure.repository.RoleRepository;
 import com.calvin.figure.repository.UserRepository;
 import com.calvin.figure.service.FileService;
 import com.calvin.figure.service.UserService;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -61,6 +66,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private MetaFieldRepository metaFieldRepository;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private RoleRepository roleRepository;
     @Autowired
     private FileService fileService;
     @Autowired
@@ -218,19 +225,10 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Transactional
     @Override
-    public ObjectNode generateAnonymousPerms() {
-        var metaTables = metaTableRepository.findAll();
-        ObjectNode permsT = JsonNodeFactory.instance.objectNode();
-        for (var mt : metaTables) {
-            ObjectNode permsF = JsonNodeFactory.instance.objectNode();
-            var mTName = mt.getName();
-            var metaFields = mt.getMetaField();
-            for (var mF : metaFields) {
-                permsF.put(mF.getName(), 0b00);
-            }
-            permsT.set(mTName, permsF);
-        }
-        return permsT;
+    public User generateAuthorities(Collection<GrantedAuthority> authorities) {
+        User user = generateAnonymousUser();
+        generateAuthorities(authorities, user);
+        return user;
     }
 
     @Transactional
@@ -416,5 +414,62 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             value.setAvatar(file1);
         }
         return userRepository.save(value);
+    }
+
+    @Override
+    @Transactional
+    public User generateAnonymousUser() {
+        User user = new User("anonymous");
+        user.setName("匿名");
+        var optRole = roleRepository.findByName("ANONYMOUS");
+        List<Role> roles = new ArrayList<>();
+        if (optRole.isPresent())
+            roles.add(optRole.get());
+        user.setRole(roles);
+        return user;
+    }
+
+    @Override
+    @Transactional
+    public Set<String> getFields(Authentication auth, int type, String metaTableName) {
+        Set<String> fields = new HashSet<>();
+        if (AuthorityAuthorizationManager.hasRole("ADMINISTRATOR").check(() -> auth, null).isGranted()) {
+            fields.add("*");
+            return fields;
+        }
+        User user;
+        if (AuthorityAuthorizationManager.hasRole("ANONYMOUS").check(() -> auth, null).isGranted()) {
+            user = generateAnonymousUser();
+        } else {
+            User me = (User) auth.getPrincipal();
+            user = userRepository.findById(me.getId()).get();
+        }
+        if (user.getRole() == null)
+            return fields;
+        for (var role : user.getRole()) {
+            var perms = role.getPermission();
+            if (perms == null)
+                continue;
+            for (var perm : perms) {
+                if (!perm.getMetaTable().getName().equals(metaTableName))
+                    continue;
+                JsonNode field = perm.getField();
+                if ("*".equals(field.asText())) {
+                    fields.clear();
+                    fields.add("*");
+                    return fields;
+                } else if (field.isObject()) {
+                    var it = field.fields();
+                    while (it.hasNext()) {
+                        var it1 = it.next();
+                        var rw = it1.getValue().asInt();
+                        if ((rw & type) == type) {
+                            fields.add(it1.getKey());
+                        }
+                    }
+                }
+            }
+        }
+        return fields;
     }
 }

@@ -59,8 +59,6 @@ public class FigureController {
 	private FigureService figureService;
 	@Autowired
 	private JPAQueryFactory jPAQueryFactory;
-	@Autowired
-	private CalUtility calUtility;
 
 	@GetMapping
 	public ResponseEntity<Map<String, Object>> find(@RequestParam(required = false) Integer offset,
@@ -84,7 +82,7 @@ public class FigureController {
 			jPAQ.limit(limit);
 		}
 		var rows = jPAQ.fetch();
-		Set<String> perms = calUtility.getFields(auth, 0b01, "figure");
+		Set<String> perms = userService.getFields(auth, 0b01, "figure");
 		CalUtility.copyFields(rows, perms);
 		Map<String, Object> body = new HashMap<>();
 		if (paged) {
@@ -103,7 +101,7 @@ public class FigureController {
 		if (!opt.isPresent())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
 		var value = opt.get();
-		Set<String> perms = calUtility.getFields(auth, 0b01, "figure");
+		Set<String> perms = userService.getFields(auth, 0b01, "figure");
 		CalUtility.copyFields(value, perms);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", value);
@@ -122,6 +120,9 @@ public class FigureController {
 			Matcher matcher = re.matcher(value.getBirthday());
 			if (!matcher.find())
 				throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "【生辰】格式不对");
+			var y = Integer.parseInt(matcher.group(2));
+			if (y == 0 && "-".equals(matcher.group(1)))
+				throw new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY, "年份为0时不要加负号");
 			if (matcher.group(3) != null) {
 				var m = Integer.parseInt(matcher.group(3));
 				if (m < 1 || m > 12)
@@ -188,7 +189,7 @@ public class FigureController {
 		userService.check("figure", "name", 0b10, auth);
 		userService.check("figure", "birthday", 0b10, auth);
 		value.setId(null); // 防止通过这个接口进行修改。
-		Set<String> perms = calUtility.getFields(auth, 0b10, "figure");
+		Set<String> perms = userService.getFields(auth, 0b10, "figure");
 		CalUtility.copyFields(value, perms);
 		var value1 = figureService.add(portrait, value);
 		Map<String, Object> body = new HashMap<>();
@@ -207,7 +208,7 @@ public class FigureController {
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
 		var target = opt.get();
-		Set<String> perms = calUtility.getFields(auth, 0b10, "figure");
+		Set<String> perms = userService.getFields(auth, 0b10, "figure");
 		CalUtility.copyFields(target, value, perms, Set.of("*"));
 		var value1 = figureService.edit(portrait, target);
 		Map<String, Object> body = new HashMap<>();
@@ -241,7 +242,7 @@ public class FigureController {
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
 		var target = opt.get();
-		Set<String> perms = calUtility.getFields(auth, 0b10, "figure");
+		Set<String> perms = userService.getFields(auth, 0b10, "figure");
 		CalUtility.copyFields(target, value, perms, nulls);
 		var value1 = figureService.edit(portrait, target);
 		Map<String, Object> body = new HashMap<>();

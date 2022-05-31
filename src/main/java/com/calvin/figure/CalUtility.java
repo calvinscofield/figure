@@ -1,62 +1,20 @@
 package com.calvin.figure;
 
 import java.lang.reflect.Field;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
 import javax.servlet.http.HttpServletRequest;
 
-import com.calvin.figure.entity.User;
-import com.fasterxml.jackson.databind.JsonNode;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.authorization.AuthorityAuthorizationManager;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.client.HttpServerErrorException;
 
 public class CalUtility {
 
     private static final Logger logger = LoggerFactory.getLogger(CalUtility.class);
-
-    public Set<String> getFields(Authentication auth, int type, String metaTableName) {
-        Set<String> fields = new HashSet<>();
-        if (AuthorityAuthorizationManager.hasRole("ADMINISTRATOR").check(() -> auth, null).isGranted()) {
-            fields.add("*");
-            return fields;
-        }
-        User user = (User) auth.getPrincipal();
-        if (user.getRole() == null)
-            return fields;
-        for (var role : user.getRole()) {
-            var perms = role.getPermission();
-            if (perms == null)
-                continue;
-            for (var perm : perms) {
-                if (!perm.getMetaTable().getName().equals(metaTableName))
-                    continue;
-                JsonNode field = perm.getField();
-                if ("*".equals(field.asText())) {
-                    fields.clear();
-                    fields.add("*");
-                    return fields;
-                } else if (field.isObject()) {
-                    var it = field.fields();
-                    while (it.hasNext()) {
-                        var it1 = it.next();
-                        var rw = it1.getValue().asInt();
-                        if ((rw & type) == type) {
-                            fields.add(it1.getKey());
-                        }
-                    }
-                }
-            }
-        }
-        return fields;
-    }
 
     // 根据权限，保留source的那些有权限的字段，把没有权限的字段设置成null。
     public static <T> void copyFields(T source, Set<String> perms) {

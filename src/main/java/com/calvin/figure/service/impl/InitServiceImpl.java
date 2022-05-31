@@ -277,5 +277,13 @@ public class InitServiceImpl implements InitService {
                 userRepository.saveAll(users);
             }
         }
+
+        try {
+            roleRepository.findByName("ANONYMOUS").get();
+        } catch (NoSuchElementException e) {
+            Role role = new Role();
+            role.setName("ANONYMOUS");
+            roleRepository.save(role);
+        }
     }
 }

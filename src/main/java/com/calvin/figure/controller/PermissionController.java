@@ -58,9 +58,6 @@ public class PermissionController {
 	private UserService userService;
 	@Autowired
 	private JPAQueryFactory jPAQueryFactory;
-	@Autowired
-	private CalUtility calUtility;
-
 	@GetMapping
 	public ResponseEntity<Map<String, Object>> find(@RequestParam(required = false) Integer offset,
 			@RequestParam(required = false) Integer limit, @RequestParam(required = false) String keyword) {
@@ -83,7 +80,7 @@ public class PermissionController {
 			jPAQ.limit(limit);
 		}
 		var rows = jPAQ.fetch();
-		Set<String> perms = calUtility.getFields(auth, 0b01, "permission");
+		Set<String> perms = userService.getFields(auth, 0b01, "permission");
 		CalUtility.copyFields(rows, perms);
 		Map<String, Object> body = new HashMap<>();
 		if (paged) {
@@ -102,7 +99,7 @@ public class PermissionController {
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
 		var value = opt.get();
-		Set<String> perms = calUtility.getFields(auth, 0b01, "permission");
+		Set<String> perms = userService.getFields(auth, 0b01, "permission");
 		CalUtility.copyFields(value, perms);
 		Map<String, Object> body = new HashMap<>();
 		body.put("data", value);
@@ -147,7 +144,7 @@ public class PermissionController {
 		userService.check("permission", "name", 0b10, auth);
 		userService.check("permission", "metaTable", 0b10, auth);
 		value.setId(null); // 防止通过这个接口进行修改。
-		Set<String> perms = calUtility.getFields(auth, 0b10, "user");
+		Set<String> perms = userService.getFields(auth, 0b10, "user");
 		CalUtility.copyFields(value, perms);
 		var value1 = permissionRepository.save(value);
 		Map<String, Object> body = new HashMap<>();
@@ -165,7 +162,7 @@ public class PermissionController {
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
 		var target = opt.get();
-		Set<String> perms = calUtility.getFields(auth, 0b10, "permission");
+		Set<String> perms = userService.getFields(auth, 0b10, "permission");
 		CalUtility.copyFields(target, value, perms, Set.of("*"));
 		var value1 = permissionRepository.save(target);
 		Map<String, Object> body = new HashMap<>();
@@ -198,7 +195,7 @@ public class PermissionController {
 		if (opt.isEmpty())
 			throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "记录不存在");
 		var target = opt.get();
-		Set<String> perms = calUtility.getFields(auth, 0b10, "permission");
+		Set<String> perms = userService.getFields(auth, 0b10, "permission");
 		CalUtility.copyFields(target, value, perms, nulls);
 		var value1 = permissionRepository.save(target);
 		Map<String, Object> body = new HashMap<>();

@@ -14,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.security.authentication.DisabledException;
@@ -22,7 +21,6 @@ import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authorization.AuthorityAuthorizationManager;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 public class CalInterceptor implements HandlerInterceptor {
@@ -42,13 +40,17 @@ public class CalInterceptor implements HandlerInterceptor {
         } else if (uri.equals("/users/me") && HttpMethod.GET.matches(method)) {
             // GET /users/me也不做处理
         } else {
-            var auth = SecurityContextHolder.getContext().getAuthentication();
-            if (AuthorityAuthorizationManager.hasRole("ANONYMOUS").check(() -> auth, null).isGranted())
-                throw new HttpClientErrorException(HttpStatus.UNAUTHORIZED, "需要登录");
-            User me = (User) auth.getPrincipal();
-            // 每次都从数据库里获取用户最新的权限数据更新到Token里，这样就可以实现动态权限
+            User user;
             Collection<GrantedAuthority> authorities = new ArrayList<>();
-            User user = userService.generateAuthorities(authorities, me.getId());
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            if (AuthorityAuthorizationManager.hasRole("ANONYMOUS").check(() -> auth, null).isGranted()) {
+                user = userService.generateAuthorities(authorities);
+                // throw new HttpClientErrorException(HttpStatus.UNAUTHORIZED, "需要登录");
+            } else {
+                User me = (User) auth.getPrincipal();
+                user = userService.generateAuthorities(authorities, me.getId());
+            }
+            // 每次都从数据库里获取用户最新的权限数据更新到Token里，这样就可以实现动态权限
             if (!user.isAccountNonLocked())
                 throw new LockedException("用户帐号已被锁定");
             if (!user.isEnabled())
@@ -57,7 +59,6 @@ public class CalInterceptor implements HandlerInterceptor {
                 throw new AccountExpiredException("用户帐号已过期");
             if (!user.isCredentialsNonExpired())
                 throw new CredentialsExpiredException("用户凭证已过期");
-            me.setRole(user.getRole());
             var field = AbstractAuthenticationToken.class.getDeclaredField("authorities");
             field.setAccessible(true);
             field.set(auth, authorities);
