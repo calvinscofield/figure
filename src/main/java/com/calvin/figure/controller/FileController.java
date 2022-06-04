@@ -20,9 +20,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.calvin.figure.CalUtility;
 import com.calvin.figure.entity.File;
-import com.calvin.figure.entity.QFigure;
 import com.calvin.figure.entity.QFile;
-import com.calvin.figure.entity.QUser;
 import com.calvin.figure.repository.FileRepository;
 import com.calvin.figure.service.FileService;
 import com.calvin.figure.service.UserService;
@@ -30,7 +28,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.querydsl.core.types.EntityPath;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import org.slf4j.Logger;
